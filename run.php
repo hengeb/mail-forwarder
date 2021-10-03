@@ -63,6 +63,7 @@ foreach ($mailsIds as $mailId) {
     $outbox->clearCustomHeaders();
 
     $forwardedFor = [];
+    $hasReplyToHeader = false;
 
     $mail = $inbox->getMail($mailId);
 
@@ -86,6 +87,9 @@ foreach ($mailsIds as $mailId) {
 
     $headers = parseHeaders($mail->headersRaw);
     foreach ($headers as $name => &$value) {
+        if ($name === 'Reply-To') {
+            $hasReplyToHeader = true;
+        }
         if (in_array($name, [
             'List-Id', 'List-Help', 'X-Course-Id', 'X-Course-Name', 'Precedence',
             'X-Auto-Response-Suppress', 'Auto-Submitted', 'List-Unsubscribe',
@@ -94,6 +98,10 @@ foreach ($mailsIds as $mailId) {
             $value = $inbox->decodeMimeStr($value);
             $outbox->addCustomHeader($name, $value);
         }
+    }
+
+    if (!$hasReplyToHeader) {
+        $outbox->addReplyTo($mail->senderAddress, $mail->senderName);
     }
 
     if ($mail->textHtml) {
