@@ -12,6 +12,21 @@ use PHPMailer\PHPMailer\PHPMailer;
 
 require_once 'vendor/autoload.php';
 
+function parseHeaders(string $header): array
+{
+    $headers = [];
+    $name = '';
+    foreach (explode("\n", trim($header)) as $line) {
+        if ($line[0] !== " " && $line[0] !== "\t") {
+            list($name, $value) = explode(':', $line, 2);
+            $headers[$name] = trim($value);
+        } else {
+            $headers[$name] .= "\n" . $line;
+        }
+    }
+    return $headers;
+}
+
 $config = json_decode(file_get_contents('config.json'), true);
 
 $inbox = new PhpImap\Mailbox(
@@ -108,19 +123,5 @@ foreach ($mailsIds as $mailId) {
 $inbox->disconnect();
 $outbox->smtpClose();
 
-function parseHeaders(string $header): array
-{
-    $headers = [];
-    $name = '';
-    foreach (explode("\n", trim($header)) as $line) {
-        if ($line[0] !== " " && $line[0] !== "\t") {
-            list($name, $value) = explode(':', $line, 2);
-            $headers[$name] = trim($value);
-        } else {
-            $headers[$name] .= "\n" . $line;
-        }
-    }
-    return $headers;
-}
-
 echo "done\n";
+
