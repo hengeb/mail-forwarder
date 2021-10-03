@@ -54,10 +54,15 @@ foreach ($mailsIds as $mailId) {
     $outbox->setFrom($config['target']['senderAddress'], $mail->senderName);
     
     foreach ($mail->to as $address=>$name) {
-        preg_match('/^[^\+]+\+([^@]+)@/', $address, $matches);
-        $outbox->addAddress($matches[1] . "@" . $config['target']['domain'], $name);
-        $forwardedFor[] = $matches[1];
+        if (preg_match('/^[^\+]+\+([^@]+)@/', $address, $matches)) {
+            $outbox->addAddress($matches[1] . "@" . $config['target']['domain'], $name);
+            $forwardedFor[] = $matches[1];
+        }
     }
+    if (!$forwardedFor) {
+        continue;
+    }
+
     $outbox->Subject = $mail->subject;
     $outbox->MessageID = $mail->messageId;
     $outbox->MessageDate = $mail->headers->date;
@@ -96,6 +101,7 @@ foreach ($mailsIds as $mailId) {
         $inbox->deleteMail($mailId);
     } else {
         echo $outbox->ErrorInfo . "\n";
+        exit;
     }
 }
 
