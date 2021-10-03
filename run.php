@@ -30,9 +30,9 @@ function parseHeaders(string $header): array
 $config = json_decode(file_get_contents('config.json'), true);
 
 $inbox = new PhpImap\Mailbox(
-	"{{$config['source']['host']}:{$config['source']['port']}/imap/{$config['source']['secure']}}{$config['source']['folder']}",
-	$config['source']['user'],
-	$config['source']['password']
+    "{{$config['source']['host']}:{$config['source']['port']}/imap/{$config['source']['secure']}}{$config['source']['folder']}",
+    $config['source']['user'],
+    $config['source']['password']
 );
 
 $inbox->setConnectionArgs(
@@ -41,10 +41,10 @@ $inbox->setConnectionArgs(
 );
 
 try {
-	$mailsIds = $inbox->searchMailbox('ALL');
+    $mailsIds = $inbox->searchMailbox('ALL');
 } catch(PhpImap\Exceptions\ConnectionException $ex) {
-	echo "IMAP connection failed: " . $ex;
-	die();
+    echo "IMAP connection failed: " . $ex;
+    die();
 }
 
 $outbox = new PHPMailer();
