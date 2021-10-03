@@ -1,0 +1,25 @@
+{
+    "source": {
+        "type": "imap",
+        "host": "imap.example.com",
+        "port": 993,
+        "secure": "ssl",
+        "user": "forward@example.com",
+        "password": "secret",
+        "folder": "INBOX"
+    },
+    "target": {
+        "type": "smtp",
+        "host": "smtp.example.com",
+        "port": 465,
+        "secure": "ssl",
+        "user": "outbox@example.com",
+        "password": "secret",
+        "domain": "another.example.com",
+        "senderAddress": "outbox@example.com"
+    },
+    "allowedSenderAddresses": [
+        "trusted-sender@yet-another.example.com",
+    ],
+    "abuseAddress": "abuse@example.com"
+}
