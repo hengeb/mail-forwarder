@@ -114,10 +114,24 @@ foreach ($mailsIds as $mailId) {
         $outbox->AltBody = '';
     }
     
-    if ($config['allowedSenderAddresses'] && !in_array($mail->senderAddress, $config['allowedSenderAddresses'], true)) {
-        $outbox->Subject = "mail rejected: " . $outbox->Subject;
-        $outbox->clearAddresses();
-        $outbox->addAddress($config['abuseAddress']);
+    if ($config['allowedSenderAddresses']) {
+        $senderIsAllowed = false;
+        foreach ($config['allowedSenderAddresses'] as $address) {
+            if ($address[0] === '/') {
+                if (preg_match($address, $mail->senderAddress)) {
+                    $senderIsAllowed = true;
+                    break;
+                }
+            } elseif (strtolower($address) === strtolower($mail->senderAddress)) {
+                $senderIsAllowed = true;
+                break;
+            }
+        }
+        if (!$senderIsAllowed) {
+            $outbox->Subject = "mail rejected: " . $outbox->Subject;
+            $outbox->clearAddresses();
+            $outbox->addAddress($config['abuseAddress']);
+        }
     }
 
     if ($outbox->send()) {

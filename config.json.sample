@@ -20,6 +20,7 @@
     },
     "allowedSenderAddresses": [
         "trusted-sender@yet-another.example.com",
+        "/@even-another\\.example\\.com$/"
     ],
     "abuseAddress": "abuse@example.com"
 }
