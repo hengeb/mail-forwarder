@@ -27,7 +27,24 @@ function parseHeaders(string $header): array
     return $headers;
 }
 
-$config = json_decode(file_get_contents('config.json'), true);
+$config = json_decode(file_get_contents(__DIR__ . '/config.json'), true);
+
+foreach (['user', 'password', 'senderAddress'] as $setting) {
+    if (!is_array($config['target'][$setting])) {
+        $config['target'][$setting] = [$config['target'][$setting]];
+    }    
+    if (count($config['target'][$setting]) === 1) {
+        $config['target'][$setting] = array_fill(0, count($config['target']['user']), $config['target'][$setting]);
+    }
+    if (count($config['target'][$setting]) !== count($config['target']['user'])) {
+        echo "Configuration is malformed: number of users does not match number of " . $setting . "s.\n";
+        die();
+    }
+}
+
+if (!empty($config['timeLimitInSeconds'])) {
+    set_time_limit((int) $config['timeLimitInSeconds']);
+}
 
 $inbox = new PhpImap\Mailbox(
     "{{$config['source']['host']}:{$config['source']['port']}/imap/{$config['source']['secure']}}{$config['source']['folder']}",
@@ -43,32 +60,53 @@ $inbox->setConnectionArgs(
 try {
     $mailsIds = $inbox->searchMailbox('ALL');
 } catch(PhpImap\Exceptions\ConnectionException $ex) {
-    echo "IMAP connection failed: " . $ex;
+    echo "IMAP connection failed: " . $ex->getMessage();
     die();
 }
 
-$outbox = new PHPMailer();
-$outbox->isSMTP();
-$outbox->Host = $config['target']['host'];
-$outbox->SMTPAuth = true;
-$outbox->Username = $config['target']['user'];
-$outbox->Password = $config['target']['password'];
-$outbox->SMTPSecure = $config['target']['secure'];
-$outbox->Port = $config['target']['port'];
-$outbox->CharSet = "UTF-8";
+$outboxUser = 0;
+$userReuseCounter = 0;
 
 foreach ($mailsIds as $mailId) {
-    $outbox->clearAddresses();
-    $outbox->clearReplyTos();
-    $outbox->clearCustomHeaders();
+    $mail = $inbox->getMail($mailId);
+
+    if (isset($outbox)) {
+        $userReuseCounter++;
+        if (!empty($config['target']['reuseLimit'])) {
+            $userReuseCounter %= $config['target']['reuseLimit'];
+        }
+        if ($userReuseCounter === 0 || empty($config['target']['reuseLimit'])) {
+            $outboxUser++;
+            $outboxUser %= count($config['target']['user']);
+            if ($outboxUser === 0 && !empty($config['target']['pauseAfterAllUsersInSeconds'])) {
+                sleep($config['target']['pauseAfterAllUsersInSeconds']);
+            }    
+            $outbox->smtpClose();
+            unset($outbox);
+        } else {
+            $outbox->clearAddresses();
+            $outbox->clearReplyTos();
+            $outbox->clearCustomHeaders();        
+        }
+    }
+
+    if (!isset($outbox)) {
+        $outbox = new PHPMailer();
+        $outbox->isSMTP();
+        $outbox->Host = $config['target']['host'];
+        $outbox->SMTPAuth = true;
+        $outbox->SMTPSecure = $config['target']['secure'];
+        $outbox->Port = $config['target']['port'];
+        $outbox->CharSet = "UTF-8";
+
+        $outbox->Username = $config['target']['user'][$outboxUser];
+        $outbox->Password = $config['target']['password'][$outboxUser];
+        $outbox->setFrom($config['target']['senderAddress'][$outboxUser], $mail->senderName);
+    }
 
     $forwardedFor = [];
     $hasReplyToHeader = false;
 
-    $mail = $inbox->getMail($mailId);
-
-    $outbox->setFrom($config['target']['senderAddress'], $mail->senderName);
-    
     foreach ($mail->to as $address=>$name) {
         if (preg_match('/^[^\+]+\+([^@]+)@/', $address, $matches)) {
             $outbox->addAddress($matches[1] . "@" . $config['target']['domain'], $name);
@@ -143,7 +181,6 @@ foreach ($mailsIds as $mailId) {
 }
 
 $inbox->disconnect();
-$outbox->smtpClose();
 
 echo "done\n";
 
